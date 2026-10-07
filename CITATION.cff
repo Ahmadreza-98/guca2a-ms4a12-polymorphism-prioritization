@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite the software repository. After the associated article is formally published, please cite the final article as well."
+title: "GUCA2A and MS4A12 polymorphism prioritization"
+type: software
+authors:
+  - family-names: "Siadat"
+    given-names: "Seyed Ahmadreza"
+    orcid: "https://orcid.org/0009-0004-1439-6306"
+version: 1.0.0
+date-released: 2026-10-07
+license: MIT
+keywords:
+  - colorectal cancer
+  - GUCA2A
+  - MS4A12
+  - SNP prioritization
+  - CADD
+  - polymorphism selection index
