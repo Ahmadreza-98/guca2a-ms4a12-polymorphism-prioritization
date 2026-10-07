@@ -1,0 +1,20 @@
+# R / RStudio
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Local environment / secrets
+.Renviron
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated analysis output
+results/
+
+# Local editorial correspondence
+ACCEPTANCE_LETTER*.pdf
