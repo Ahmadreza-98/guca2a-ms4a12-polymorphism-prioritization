@@ -11,7 +11,6 @@ Reproducible R code and archived inputs for the SNP-prioritization component of 
 | Status | Accepted for publication on 23 August 2026 |
 | DOI | Pending publication |
 | PubMed / PMC | Pending publication |
-| Author ORCID | Seyed Ahmadreza Siadat: https://orcid.org/0009-0004-1439-6306 |
 
 Journal website: https://www.ijmcmed.org/
 
