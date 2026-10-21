@@ -182,14 +182,3 @@ The code and repository documentation are released under the **MIT License**; se
 Bundled third-party database content and derived scores remain subject to the terms of their original sources. In particular, the CADD website states that CADD scores are freely available for non-commercial applications and directs commercial users to contact the CADD team. See https://cadd.gs.washington.edu/ for current terms.
 
 The MIT License does not override third-party data or database terms.
-
-## Publication update checklist
-
-After the paper is formally published, only the bibliographic metadata needs updating:
-
-1. add the final DOI and article citation to this README;
-2. add PubMed and PMC identifiers when available;
-3. add the published article as `preferred-citation` in `CITATION.cff`;
-4. optionally add the final GitHub repository URL to `CITATION.cff`.
-
-The scientific analysis files do not need to change solely because the paper has moved from accepted to published status.
