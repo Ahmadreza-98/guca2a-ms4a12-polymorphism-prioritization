@@ -514,19 +514,21 @@ make_gene_plot <- function(psi_data, gene_name, meta, top_n = 10L) {
   regular_ticks <- seq(tick_start, tick_end, by = meta$tick_by)
   regular_ticks <- regular_ticks[regular_ticks >= min_bound & regular_ticks <= max_bound]
 
-  x_ticks <- sort(unique(c(
-    upstream_start,
-    upstream_end,
-    gene_start,
-    gene_end,
-    downstream_start,
-    downstream_end,
-    regular_ticks
-  )))
+  # Label both ends of the plotted interval and both gene boundaries.
+  # Omit nearby regular ticks to avoid overlapping labels.
+  essential_ticks <- sort(unique(c(min_bound, gene_start, gene_end, max_bound)))
+  min_label_gap <- 0.055 * (max_bound - min_bound)
+  spare_ticks <- regular_ticks[vapply(
+    regular_ticks,
+    function(x) all(abs(x - essential_ticks) >= min_label_gap),
+    logical(1)
+  )]
+  x_ticks <- sort(unique(c(essential_ticks, spare_ticks)))
 
   x_labels <- vapply(x_ticks, function(x) {
     label <- format(x, big.mark = ",", scientific = FALSE, trim = TRUE)
-    if (x %in% c(gene_start, gene_end)) paste0("**", label, "**") else label
+    # Emphasize the gene boundaries and the ends of the displayed interval.
+    if (x %in% essential_ticks) paste0("**", label, "**") else label
   }, character(1))
 
   top_snps <- polymorphisms %>%
@@ -547,20 +549,34 @@ make_gene_plot <- function(psi_data, gene_name, meta, top_n = 10L) {
     sprintf("%.1f", log_breaks)
   )
 
+  # Use a common fill scale to label the three genomic regions.
+  region_data <- data.frame(
+    xmin = c(upstream_start, gene_start, downstream_start),
+    xmax = c(upstream_end, gene_end, downstream_end),
+    region = factor(
+      c("Upstream (2000 bp)", "Gene body", "Downstream (500 bp)"),
+      levels = c("Upstream (2000 bp)", "Gene body", "Downstream (500 bp)")
+    )
+  )
+
   p <- ggplot() +
     geom_rect(
-      aes(xmin = upstream_start, xmax = upstream_end, ymin = -1, ymax = 1),
-      fill = "#B3E5FC",
+      data = region_data,
+      aes(xmin = xmin, xmax = xmax, ymin = -1, ymax = 1, fill = region),
       inherit.aes = FALSE
     ) +
-    geom_rect(
-      aes(xmin = downstream_start, xmax = downstream_end, ymin = -1, ymax = 1),
-      fill = "#C8E6C9",
-      inherit.aes = FALSE
+    scale_fill_manual(
+      name = "Genomic region",
+      values = c(
+        "Upstream (2000 bp)" = "#B3E5FC",
+        "Gene body" = "#FFECB3",
+        "Downstream (500 bp)" = "#C8E6C9"
+      ),
+      guide = guide_legend(order = 1)
     ) +
     geom_rect(
       aes(xmin = gene_start, xmax = gene_end, ymin = -1, ymax = 1),
-      fill = "#FFECB3",
+      fill = NA,
       color = "orange",
       linewidth = 0.5,
       inherit.aes = FALSE
@@ -583,42 +599,15 @@ make_gene_plot <- function(psi_data, gene_name, meta, top_n = 10L) {
       name = "PSI\n(log scale)",
       breaks = log_breaks,
       labels = log_labels,
-      guide = guide_colorbar(barheight = unit(3, "cm"))
+      guide = guide_colorbar(barheight = unit(3, "cm"), order = 2)
     ) +
     scale_size_continuous(range = c(1.5, 5), guide = "none") +
     scale_x_continuous(
       breaks = x_ticks,
       labels = x_labels,
-      expand = expansion(mult = 0.04)
+      expand = expansion(mult = c(0.05, 0.07))
     ) +
     coord_cartesian(ylim = c(-1.2, 1.2), clip = "off") +
-    annotate(
-      "text",
-      x = mean(c(upstream_start, upstream_end)),
-      y = -1.15,
-      label = "Upstream\n(2000 bp)",
-      size = 3.2,
-      color = "darkblue",
-      fontface = "bold"
-    ) +
-    annotate(
-      "text",
-      x = mean(c(gene_start, gene_end)),
-      y = -1.15,
-      label = paste0(gene_name, "\nGene"),
-      size = 3.8,
-      color = "darkorange",
-      fontface = "bold"
-    ) +
-    annotate(
-      "text",
-      x = mean(c(downstream_start, downstream_end)),
-      y = -1.15,
-      label = "Downstream\n(500 bp)",
-      size = 3.2,
-      color = "darkgreen",
-      fontface = "bold"
-    ) +
     geom_vline(
       xintercept = c(upstream_start, upstream_end, gene_start, gene_end, downstream_start, downstream_end),
       linetype = "dashed",
@@ -633,9 +622,9 @@ make_gene_plot <- function(psi_data, gene_name, meta, top_n = 10L) {
       color = "gray60",
       linewidth = 0.3
     ) +
-    theme_minimal(base_size = 12) +
+    theme_minimal(base_size = 14.5) +
     theme(
-      axis.text.x = ggtext::element_markdown(angle = 45, hjust = 1, size = 10),
+      axis.text.x = ggtext::element_markdown(angle = 45, hjust = 1, size = 12.25),
       axis.text.y = element_blank(),
       axis.ticks.y = element_blank(),
       axis.ticks.x = element_line(color = "gray50", linewidth = 0.5),
@@ -645,16 +634,17 @@ make_gene_plot <- function(psi_data, gene_name, meta, top_n = 10L) {
       plot.title = element_text(
         hjust = 0.5,
         face = "bold",
-        size = 15,
-        margin = margin(b = 15)
+        size = 17.5,
+        margin = margin(b = 12)
       ),
       legend.position = "right",
       legend.key.height = unit(1.2, "cm"),
       legend.key.width = unit(0.4, "cm"),
-      legend.text = element_text(size = 10),
-      legend.title = element_text(size = 11, face = "bold"),
+      legend.text = element_text(size = 11.5),
+      legend.title = element_text(size = 12.5, face = "bold"),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA)
+      plot.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(t = 10, r = 15, b = 14, l = 28)
     ) +
     labs(
       title = paste("Polymorphisms around", gene_name, "Gene on", chromosome),
@@ -667,8 +657,8 @@ make_gene_plot <- function(psi_data, gene_name, meta, top_n = 10L) {
       ggrepel::geom_text_repel(
         data = top_snps,
         aes(x = position, y = ypos, label = snp_id),
-        size = 2.9,
-        box.padding = 0.25,
+        size = 3.5,
+        box.padding = 0.3,
         point.padding = 0.15,
         min.segment.length = 0.05,
         max.iter = 200000,
@@ -725,6 +715,176 @@ ggsave(
   dpi = 600
 )
 
+
+# ---- Combined figures ---------------------------------------------------------
+
+# The standalone figures retain their titles and full legends. Combined panels
+# use only the A/B labels and share one key for the genomic regions.
+p_guca2a_A <- p_guca2a +
+  labs(title = NULL, tag = "A") +
+  guides(fill = "none") +
+  theme(
+    plot.tag = element_text(face = "bold", size = 23),
+    plot.tag.position = c(0.012, 0.98)
+  )
+
+p_ms4a12_B <- p_ms4a12 +
+  labs(title = NULL, tag = "B") +
+  guides(fill = "none") +
+  theme(
+    plot.tag = element_text(face = "bold", size = 23),
+    plot.tag.position = c(0.012, 0.98)
+  )
+
+region_labels <- c("Upstream (2000 bp)", "Gene body", "Downstream (500 bp)")
+region_colors <- c("#B3E5FC", "#FFECB3", "#C8E6C9")
+
+# Version 1: a vertical genomic-region key between the two PSI colorbars.
+draw_region_key_vertical <- function() {
+  grid::grid.text(
+    "Genomic region", x = grid::unit(0.05, "in"), y = 0.88,
+    just = c("left", "top"),
+    gp = grid::gpar(fontsize = 12.5, fontface = "bold")
+  )
+  for (i in seq_along(region_labels)) {
+    key_y <- c(0.61, 0.39, 0.17)[i]
+    grid::grid.rect(
+      x = grid::unit(0.16, "in"), y = key_y,
+      width = grid::unit(0.18, "in"), height = grid::unit(0.18, "in"),
+      gp = grid::gpar(fill = region_colors[i], col = "grey65")
+    )
+    grid::grid.text(
+      region_labels[i], x = grid::unit(0.34, "in"), y = key_y,
+      just = "left", gp = grid::gpar(fontsize = 11.5)
+    )
+  }
+}
+
+# Version 2: the same shared key on a single row below both panels.
+# The row occupies only half an inch, leaving the plot area nearly unchanged.
+draw_region_key_horizontal <- function() {
+  grid::grid.text(
+    "Genomic region", x = 0.14, y = 0.53, just = "left",
+    gp = grid::gpar(fontsize = 12.5, fontface = "bold")
+  )
+  box_x <- c(0.31, 0.53, 0.68)
+  text_x <- c(0.33, 0.55, 0.70)
+  for (i in seq_along(region_labels)) {
+    grid::grid.rect(
+      x = box_x[i], y = 0.53,
+      width = grid::unit(0.18, "in"), height = grid::unit(0.18, "in"),
+      gp = grid::gpar(fill = region_colors[i], col = "grey65")
+    )
+    grid::grid.text(
+      region_labels[i], x = text_x[i], y = 0.53,
+      just = "left", gp = grid::gpar(fontsize = 11.5)
+    )
+  }
+}
+
+# Each gene retains its own PSI scale because the plotted ranges differ.
+get_psi_legend <- function(p) {
+  plot_grob <- ggplot2::ggplotGrob(p)
+  guide_names <- c("guide-box-right", "guide-box")
+  for (guide_name in guide_names) {
+    idx <- match(guide_name, plot_grob$layout$name)
+    if (!is.na(idx) && !inherits(plot_grob$grobs[[idx]], "zeroGrob")) {
+      return(plot_grob$grobs[[idx]])
+    }
+  }
+  stop("Could not extract the PSI legend for the combined figure.")
+}
+
+# Compact right-hand column: PSI (A), genomic regions, PSI (B).
+draw_combined_figure <- function() {
+  psi_A <- get_psi_legend(p_guca2a_A)
+  psi_B <- get_psi_legend(p_ms4a12_B)
+  plot_A <- p_guca2a_A + theme(legend.position = "none")
+  plot_B <- p_ms4a12_B + theme(legend.position = "none")
+
+  grid::grid.newpage()
+  grid::pushViewport(grid::viewport(
+    layout = grid::grid.layout(
+      nrow = 2, ncol = 2,
+      widths = grid::unit.c(grid::unit(1, "null"), grid::unit(1.95, "in")),
+      heights = grid::unit(c(1, 1), "null")
+    )
+  ))
+
+  print(plot_A, newpage = FALSE,
+        vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1))
+  print(plot_B, newpage = FALSE,
+        vp = grid::viewport(layout.pos.row = 2, layout.pos.col = 1))
+
+  grid::pushViewport(grid::viewport(
+    layout.pos.row = 1:2, layout.pos.col = 2,
+    layout = grid::grid.layout(
+      nrow = 3, ncol = 1,
+      heights = grid::unit.c(
+        grid::unit(1, "null"), grid::unit(1.65, "in"), grid::unit(1, "null")
+      )
+    )
+  ))
+  grid::pushViewport(grid::viewport(layout.pos.row = 1, layout.pos.col = 1))
+  grid::grid.draw(psi_A)
+  grid::popViewport()
+  grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 1))
+  draw_region_key_vertical()
+  grid::popViewport()
+  grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 1))
+  grid::grid.draw(psi_B)
+  grid::popViewport(3)
+}
+
+# Alternative layout: the original right-side PSI legends and a short shared
+# genomic-region key at the bottom. No extra horizontal legend column is added.
+draw_combined_figure_region_bottom <- function() {
+  grid::grid.newpage()
+  grid::pushViewport(grid::viewport(
+    layout = grid::grid.layout(
+      nrow = 3, ncol = 1,
+      heights = grid::unit.c(
+        grid::unit(1, "null"), grid::unit(1, "null"), grid::unit(0.5, "in")
+      )
+    )
+  ))
+  print(p_guca2a_A, newpage = FALSE,
+        vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1))
+  print(p_ms4a12_B, newpage = FALSE,
+        vp = grid::viewport(layout.pos.row = 2, layout.pos.col = 1))
+  grid::pushViewport(grid::viewport(layout.pos.row = 3, layout.pos.col = 1))
+  draw_region_key_horizontal()
+  grid::popViewport(2)
+}
+
+# Both layouts are exported at the same size and resolution.
+save_combined_figure <- function(filename, draw_fun) {
+  output <- file.path(FIGURES_DIR, filename)
+
+  grDevices::png(paste0(output, ".png"), width = 15, height = 11,
+                 units = "in", res = 600, bg = "white")
+  tryCatch(draw_fun(), finally = grDevices::dev.off())
+
+  grDevices::pdf(paste0(output, ".pdf"), width = 15, height = 11,
+                 onefile = FALSE, useDingbats = FALSE)
+  tryCatch(draw_fun(), finally = grDevices::dev.off())
+
+  if (capabilities("tiff")) {
+    grDevices::tiff(paste0(output, ".tif"), width = 15, height = 11,
+                    units = "in", res = 600, compression = "lzw", bg = "white")
+    tryCatch(draw_fun(), finally = grDevices::dev.off())
+  }
+}
+
+# A = GUCA2A (upper panel); B = MS4A12 (lower panel).
+save_combined_figure(
+  "Figure_AB_GUCA2A_MS4A12_600dpi",
+  draw_combined_figure
+)
+save_combined_figure(
+  "Figure_AB_GUCA2A_MS4A12_region_bottom_600dpi",
+  draw_combined_figure_region_bottom
+)
 
 # ---- Supplementary PSI tables ------------------------------------------------
 
